@@ -52,8 +52,18 @@ def process_building_data(building_data: pd.DataFrame) -> pd.DataFrame:
     # Extract latitude and longitude
     building_data['latitude'] = building_data['centroid'].apply(lambda point: point.y if point else None)
     building_data['longitude'] = building_data['centroid'].apply(lambda point: point.x if point else None)
-
-    return building_data
+    selected_cols = [
+        "amenity",
+        "building",
+        "name",
+        "geometry",
+        'centroid',
+        'latitude',
+        'longitude'
+                    ]
+    select_cols_building_data= building_data[selected_cols]
+    select_cols_building_data.reset_index(inplace=True)
+    return select_cols_building_data
 
 
 def save_building_data(building_data: pd.DataFrame, output_dir: Path) -> None:
