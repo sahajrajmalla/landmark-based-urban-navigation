@@ -131,7 +131,7 @@ Below is a list of Python libraries required for this project:
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for more details.
+This project is licensed under the Apache License. See the [LICENSE](./LICENSE) file for more details.
 
 ## References
 
