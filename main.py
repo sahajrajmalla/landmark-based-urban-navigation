@@ -20,7 +20,7 @@ def main():
 
     # Load and preprocess data
     landmarks_dict = load_landmarks('./data/cleaned_landmarks.csv')
-    ktm_buildings = load_buildings('./data/kathmandu_buildings.csv').head(10)
+    ktm_buildings = load_buildings('./data/kathmandu_buildings.csv').head(10) # For testing purposes, please remove head(10) for full data
 
     # Initialize LandmarkPriority object
     landmark_priority = LandmarkPriority()
