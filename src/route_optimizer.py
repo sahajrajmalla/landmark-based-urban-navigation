@@ -2,6 +2,17 @@ import osmnx as ox
 import networkx as nx
 from src.utils import haversine_distance, calculate_initial_compass_bearing
 
+
+# Function to calculate heuristic for A* algorithm
+def heuristic(u, v, G):
+    """Custom heuristic function for A* algorithm that calculates great-circle distance."""
+    try:
+        u_lat, u_lon = G.nodes[u]['y'], G.nodes[u]['x']
+        v_lat, v_lon = G.nodes[v]['y'], G.nodes[v]['x']
+        return ox.distance.great_circle_vec(u_lat, u_lon, v_lat, v_lon)
+    except KeyError as e:
+        raise ValueError(f"Missing node attributes for {u} or {v}: {e}")
+
 class RouteOptimizer:
     def __init__(self, G, landmark_location, destination_location):
         """
@@ -20,16 +31,16 @@ class RouteOptimizer:
 
     def get_shortest_path(self):
         """
-        Get the shortest path based on travel time.
+        Get the shortest path based on travel time using A*.
         """
         # Add speed and travel time to edges
         self.G = ox.add_edge_speeds(self.G)  # Adds edge speeds based on OSM data
         self.G = ox.add_edge_travel_times(self.G)  # Calculate travel times
-        
-        # Compute shortest path based on travel time
+
+        # Compute shortest path based on travel time using A*
         orig = self.landmark_location
         dest = self.destination_location
-        self.path = nx.shortest_path(self.G, orig, dest, weight='travel_time')
+        self.path = nx.astar_path(self.G, orig, dest, heuristic=lambda u, v: heuristic(u, v, self.G), weight='travel_time')
         return self.path
 
     def generate_hash(self, landmark_name, path):
