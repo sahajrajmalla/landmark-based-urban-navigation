@@ -9,6 +9,7 @@ from typing import Optional
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+EPSG_CODE = "EPSG:4326"
 
 
 def fetch_building_data(place_name: str) -> Optional[pd.DataFrame]:
@@ -41,29 +42,73 @@ def process_building_data(building_data: pd.DataFrame) -> pd.DataFrame:
     Returns:
         pd.DataFrame: The processed DataFrame with centroid and latitude/longitude columns.
     """
-    # Convert Polygon geometries to MultiPolygon where necessary
-    building_data['geometry'] = building_data['geometry'].apply(
-        lambda x: MultiPolygon([x]) if x.geom_type == 'Polygon' else x
-    )
+    try:
+        logger.info("Preprocessing building data...")
 
-    # Calculate centroid of each building (considering projection for accuracy)
-    building_data['centroid'] = building_data['geometry'].centroid
+        # Convert geometries to MultiPolygon if needed
+        building_data["geometry"] = building_data["geometry"].apply(
+            lambda x: MultiPolygon([x]) if x.geom_type == "Polygon" else x
+        )
 
-    # Extract latitude and longitude
-    building_data['latitude'] = building_data['centroid'].apply(lambda point: point.y if point else None)
-    building_data['longitude'] = building_data['centroid'].apply(lambda point: point.x if point else None)
-    selected_cols = [
-        "amenity",
-        "building",
-        "name",
-        "geometry",
-        'centroid',
-        'latitude',
-        'longitude'
-                    ]
-    select_cols_building_data= building_data[selected_cols]
-    select_cols_building_data.reset_index(inplace=True)
-    return select_cols_building_data
+        # Calculate centroids
+        building_data["centroid"] = building_data["geometry"].centroid
+
+        # Extract latitude and longitude
+        building_data["latitude"] = building_data["centroid"].y
+        building_data["longitude"] = building_data["centroid"].x
+
+        # Reproject data to EPSG:4326
+        building_data = building_data.to_crs(EPSG_CODE)
+
+        # Select relevant columns
+        selected_cols = ["amenity", "building", "name", "geometry", "latitude", "longitude"]
+        building_data = building_data[selected_cols]
+
+        # Drop rows with missing values
+        building_data.dropna(inplace=True)
+        building_data.dropna(subset=["latitude", "longitude"], inplace=True)
+
+        # Remove duplicates
+        building_data.drop_duplicates(subset=["latitude", "longitude"], inplace=True)
+
+        logger.info("Preprocessing completed.")
+        return building_data
+    except Exception as e:
+        logger.error(f"Error in preprocessing building data: {e}")
+        return None
+
+
+def validate_data(building_data):
+    """
+    Validate the integrity and quality of the processed data.
+
+    Args:
+        building_data (GeoDataFrame): Processed building data.
+
+    Returns:
+        bool: True if validation passes, False otherwise.
+    """
+    try:
+        logger.info("Validating data...")
+
+        # Check for missing values
+        if building_data.isnull().sum().any():
+            logger.warning("Data contains missing values.")
+
+        # Check for duplicate entries
+        if building_data.duplicated(subset=["latitude", "longitude"]).any():
+            logger.warning("Data contains duplicate entries.")
+
+        # Ensure geometries are valid
+        invalid_geometries = building_data[~building_data["geometry"].is_valid]
+        if not invalid_geometries.empty:
+            logger.warning(f"Found {len(invalid_geometries)} invalid geometries.")
+
+        logger.info("Validation completed.")
+        return True
+    except Exception as e:
+        logger.error(f"Error in data validation: {e}")
+        return False
 
 
 def save_building_data(building_data: pd.DataFrame, output_dir: Path) -> None:
@@ -110,6 +155,9 @@ def crawl_buildings_data() -> None:
 
     # Step 2: Process the data
     building_data = process_building_data(building_data)
+    
+    # Step 3: Validate the data
+    validate_data(building_data)
 
     # Step 3: Save the processed data
     save_building_data(building_data, output_dir)
