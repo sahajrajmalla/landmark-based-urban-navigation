@@ -65,7 +65,7 @@ def process_building_data(building_data: pd.DataFrame) -> pd.DataFrame:
         building_data = building_data[selected_cols]
 
         # Drop rows with missing values
-        building_data.dropna(inplace=True)
+        # building_data.dropna(inplace=True)
         building_data.dropna(subset=["latitude", "longitude"], inplace=True)
 
         # Remove duplicates
